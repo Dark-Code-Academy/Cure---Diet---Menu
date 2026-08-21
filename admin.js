@@ -1,5 +1,5 @@
 // ============================================
-// Cure Diet - Admin JavaScript (مع وجبات متعددة)
+// Cure Diet - Admin JavaScript (مصحح)
 // ============================================
 
 console.log('🚀 admin.js started');
@@ -15,21 +15,28 @@ const firebaseConfig = {
     measurementId: "G-569LE65Q2Z"
 };
 
+// ===== Initialize Firebase =====
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
+// ============================================================
 // ===== المتغيرات العامة =====
+// ============================================================
+
 let currentMenuId = null;
 let currentMenuName = '';
 
 // ============================================================
-// ===== الصفحة 1: قائمة المنيوات =====
+// ===== Load Menus =====
 // ============================================================
 
 async function loadMenus() {
     console.log('📡 Loading menus...');
     const container = document.getElementById('menusList');
-    if (!container) return;
+    if (!container) {
+        console.error('❌ menusList not found');
+        return;
+    }
     
     container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">جاري التحميل...</p></div>';
     
@@ -43,7 +50,7 @@ async function loadMenus() {
         document.getElementById('menusCount').textContent = menus.length;
         
         if (menus.length === 0) {
-            container.innerHTML = '<div class="text-center py-5"><p class="text-muted">📋 لا توجد منيوات</p></div>';
+            container.innerHTML = '<div class="text-center py-5"><p class="text-muted">📋 لا توجد منيوات</p><p class="text-muted small">استخدم النموذج أعلاه لإضافة منيو جديد</p></div>';
             return;
         }
         
@@ -67,13 +74,13 @@ async function loadMenus() {
         console.log('✅ Menus loaded');
         
     } catch (error) {
-        console.error('❌ Error:', error);
+        console.error('❌ Error loading menus:', error);
         container.innerHTML = `<div class="text-center py-5"><p class="text-danger">⚠️ خطأ: ${error.message}</p><button class="btn btn-primary btn-sm" onclick="loadMenus()">🔄 إعادة</button></div>`;
     }
 }
 
 // ============================================================
-// ===== فتح تفاصيل المنيو =====
+// ===== Open Menu Details =====
 // ============================================================
 
 async function openMenuDetails(menuId, menuName) {
@@ -82,13 +89,21 @@ async function openMenuDetails(menuId, menuName) {
     currentMenuName = menuName;
     
     try {
-        document.getElementById('stepMenus').style.display = 'none';
-        document.getElementById('stepMenuDetails').style.display = 'block';
-        document.getElementById('btnBack').style.display = 'inline-block';
-        document.getElementById('breadcrumbTitle').textContent = '📋 ' + menuName;
-        document.getElementById('menuDetailsTitle').textContent = '📋 ' + menuName + ' - الأيام والوجبات';
+        // ✅ التحقق من وجود العناصر قبل التعامل معها
+        const stepMenus = document.getElementById('stepMenus');
+        const stepMenuDetails = document.getElementById('stepMenuDetails');
+        const btnBack = document.getElementById('btnBack');
+        const breadcrumbTitle = document.getElementById('breadcrumbTitle');
+        const menuDetailsTitle = document.getElementById('menuDetailsTitle');
+        
+        if (stepMenus) stepMenus.style.display = 'none';
+        if (stepMenuDetails) stepMenuDetails.style.display = 'block';
+        if (btnBack) btnBack.style.display = 'inline-block';
+        if (breadcrumbTitle) breadcrumbTitle.textContent = '📋 ' + menuName;
+        if (menuDetailsTitle) menuDetailsTitle.textContent = '📋 ' + menuName + ' - الأيام والوجبات';
         
         await loadMenuDetails(menuId);
+        
     } catch (error) {
         console.error('❌ Error opening menu:', error);
         alert('❌ خطأ في فتح المنيو: ' + error.message);
@@ -96,30 +111,39 @@ async function openMenuDetails(menuId, menuName) {
 }
 
 function goBack() {
-    document.getElementById('stepMenuDetails').style.display = 'none';
-    document.getElementById('stepMenus').style.display = 'block';
-    document.getElementById('btnBack').style.display = 'none';
-    document.getElementById('breadcrumbTitle').textContent = 'لوحة التحكم';
+    const stepMenuDetails = document.getElementById('stepMenuDetails');
+    const stepMenus = document.getElementById('stepMenus');
+    const btnBack = document.getElementById('btnBack');
+    const breadcrumbTitle = document.getElementById('breadcrumbTitle');
+    
+    if (stepMenuDetails) stepMenuDetails.style.display = 'none';
+    if (stepMenus) stepMenus.style.display = 'block';
+    if (btnBack) btnBack.style.display = 'none';
+    if (breadcrumbTitle) breadcrumbTitle.textContent = 'لوحة التحكم';
+    
     loadMenus();
 }
 
 // ============================================================
-// ===== تحميل تفاصيل المنيو =====
+// ===== Load Menu Details =====
 // ============================================================
 
 async function loadMenuDetails(menuId) {
-    console.log('📡 Loading menu details for:', menuId);
     const container = document.getElementById('menuDetailsContent');
+    if (!container) {
+        console.error('❌ menuDetailsContent not found');
+        return;
+    }
+    
     container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">جاري التحميل...</p></div>';
     
     try {
+        // جلب الأيام
         const daysSnapshot = await db.collection('days').where('menu_id', '==', menuId).get();
         const days = [];
         daysSnapshot.forEach(doc => {
             days.push({ id: doc.id, ...doc.data() });
         });
-        
-        console.log('📊 Days found:', days.length);
         
         if (days.length === 0) {
             container.innerHTML = `
@@ -133,6 +157,7 @@ async function loadMenuDetails(menuId) {
         
         let html = '';
         for (const day of days) {
+            // جلب الوجبات
             const mealsSnapshot = await db.collection('meals').where('day_id', '==', day.id).get();
             const meals = [];
             mealsSnapshot.forEach(doc => {
@@ -191,7 +216,110 @@ async function loadMenuDetails(menuId) {
 }
 
 // ============================================================
-// ===== إضافة وجبة واحدة =====
+// ===== Add Menu =====
+// ============================================================
+
+async function addMenu() {
+    const nameInput = document.getElementById('newMenuName');
+    const iconInput = document.getElementById('newMenuIcon');
+    const name = nameInput.value.trim();
+    const icon = iconInput.value.trim() || '📋';
+    
+    if (!name) {
+        alert('⚠️ يرجى كتابة اسم المنيو');
+        nameInput.focus();
+        return;
+    }
+    
+    try {
+        await db.collection('menus').add({
+            name: name,
+            icon: icon,
+            active: true,
+            createdAt: new Date()
+        });
+        nameInput.value = '';
+        iconInput.value = '';
+        alert('✅ تم إضافة المنيو بنجاح');
+        loadMenus();
+    } catch (error) {
+        console.error('❌ Error:', error);
+        alert('❌ خطأ: ' + error.message);
+    }
+}
+
+// ============================================================
+// ===== Delete Menu =====
+// ============================================================
+
+async function deleteMenu(id) {
+    if (!confirm('⚠️ هل أنت متأكد من حذف هذا المنيو؟')) return;
+    
+    try {
+        // حذف الأيام والوجبات
+        const daysSnapshot = await db.collection('days').where('menu_id', '==', id).get();
+        for (const doc of daysSnapshot.docs) {
+            const mealsSnapshot = await db.collection('meals').where('day_id', '==', doc.id).get();
+            for (const mealDoc of mealsSnapshot.docs) {
+                await db.collection('meals').doc(mealDoc.id).delete();
+            }
+            await db.collection('days').doc(doc.id).delete();
+        }
+        await db.collection('menus').doc(id).delete();
+        alert('✅ تم الحذف بنجاح');
+        loadMenus();
+    } catch (error) {
+        console.error('❌ Error:', error);
+        alert('❌ خطأ: ' + error.message);
+    }
+}
+
+// ============================================================
+// ===== Add Day =====
+// ============================================================
+
+async function addDay() {
+    const dayName = prompt('📅 أدخل اسم اليوم:');
+    if (!dayName || !dayName.trim()) return;
+    
+    try {
+        await db.collection('days').add({
+            menu_id: currentMenuId,
+            day_name: dayName.trim(),
+            order_index: 1,
+            createdAt: new Date()
+        });
+        alert('✅ تم إضافة اليوم');
+        loadMenuDetails(currentMenuId);
+    } catch (error) {
+        console.error('❌ Error:', error);
+        alert('❌ خطأ: ' + error.message);
+    }
+}
+
+// ============================================================
+// ===== Delete Day =====
+// ============================================================
+
+async function deleteDay(id) {
+    if (!confirm('⚠️ هل أنت متأكد من حذف هذا اليوم؟')) return;
+    
+    try {
+        const mealsSnapshot = await db.collection('meals').where('day_id', '==', id).get();
+        for (const doc of mealsSnapshot.docs) {
+            await db.collection('meals').doc(doc.id).delete();
+        }
+        await db.collection('days').doc(id).delete();
+        alert('✅ تم الحذف');
+        loadMenuDetails(currentMenuId);
+    } catch (error) {
+        console.error('❌ Error:', error);
+        alert('❌ خطأ: ' + error.message);
+    }
+}
+
+// ============================================================
+// ===== Add Meal =====
 // ============================================================
 
 async function addMeal(dayId) {
@@ -240,7 +368,7 @@ async function addMeal(dayId) {
 }
 
 // ============================================================
-// ===== إضافة وجبات متعددة (سريعة) =====
+// ===== Add Multiple Meals =====
 // ============================================================
 
 async function addMultipleMeals(dayId) {
@@ -253,7 +381,6 @@ async function addMultipleMeals(dayId) {
     };
     const types = ['breakfast', 'lunch', 'dinner', 'snack', 'salad'];
     
-    // اختيار النوع
     const choice = prompt(
         'اختر نوع الوجبة:\n' +
         '1. ' + labels.breakfast + '\n' +
@@ -271,8 +398,6 @@ async function addMultipleMeals(dayId) {
     }
     
     const mealType = types[index];
-    
-    // إضافة أسماء متعددة (مفصولة بفاصلة)
     const namesInput = prompt('🍽️ أدخل أسماء الأصناف (مفصولة بفاصلة ,):\nمثال: ساندوتش حلوم, بيض مقلي, راب ديك رومي');
     if (!namesInput || !namesInput.trim()) return;
     
@@ -303,94 +428,8 @@ async function addMultipleMeals(dayId) {
 }
 
 // ============================================================
-// ===== دوال الإضافة والحذف =====
+// ===== Delete Meal =====
 // ============================================================
-
-async function addMenu() {
-    const nameInput = document.getElementById('newMenuName');
-    const iconInput = document.getElementById('newMenuIcon');
-    const name = nameInput.value.trim();
-    const icon = iconInput.value.trim() || '📋';
-    
-    if (!name) {
-        alert('⚠️ يرجى كتابة اسم المنيو');
-        nameInput.focus();
-        return;
-    }
-    
-    try {
-        await db.collection('menus').add({
-            name: name,
-            icon: icon,
-            active: true,
-            createdAt: new Date()
-        });
-        nameInput.value = '';
-        iconInput.value = '';
-        alert('✅ تم إضافة المنيو بنجاح');
-        loadMenus();
-    } catch (error) {
-        console.error('❌ Error:', error);
-        alert('❌ خطأ: ' + error.message);
-    }
-}
-
-async function deleteMenu(id) {
-    if (!confirm('⚠️ هل أنت متأكد من حذف هذا المنيو؟')) return;
-    
-    try {
-        const daysSnapshot = await db.collection('days').where('menu_id', '==', id).get();
-        for (const doc of daysSnapshot.docs) {
-            const mealsSnapshot = await db.collection('meals').where('day_id', '==', doc.id).get();
-            for (const mealDoc of mealsSnapshot.docs) {
-                await db.collection('meals').doc(mealDoc.id).delete();
-            }
-            await db.collection('days').doc(doc.id).delete();
-        }
-        await db.collection('menus').doc(id).delete();
-        alert('✅ تم الحذف بنجاح');
-        loadMenus();
-    } catch (error) {
-        console.error('❌ Error:', error);
-        alert('❌ خطأ: ' + error.message);
-    }
-}
-
-async function addDay() {
-    const dayName = prompt('📅 أدخل اسم اليوم:');
-    if (!dayName || !dayName.trim()) return;
-    
-    try {
-        await db.collection('days').add({
-            menu_id: currentMenuId,
-            day_name: dayName.trim(),
-            order_index: 1,
-            createdAt: new Date()
-        });
-        alert('✅ تم إضافة اليوم');
-        loadMenuDetails(currentMenuId);
-    } catch (error) {
-        console.error('❌ Error:', error);
-        alert('❌ خطأ: ' + error.message);
-    }
-}
-
-async function deleteDay(id) {
-    if (!confirm('⚠️ هل أنت متأكد من حذف هذا اليوم؟')) return;
-    
-    try {
-        const mealsSnapshot = await db.collection('meals').where('day_id', '==', id).get();
-        for (const doc of mealsSnapshot.docs) {
-            await db.collection('meals').doc(doc.id).delete();
-        }
-        await db.collection('days').doc(id).delete();
-        alert('✅ تم الحذف');
-        loadMenuDetails(currentMenuId);
-    } catch (error) {
-        console.error('❌ Error:', error);
-        alert('❌ خطأ: ' + error.message);
-    }
-}
 
 async function deleteMeal(id) {
     if (!confirm('⚠️ هل أنت متأكد من حذف هذا الصنف؟')) return;
@@ -426,5 +465,3 @@ window.loadMenus = loadMenus;
 window.openMenuDetails = openMenuDetails;
 window.goBack = goBack;
 window.loadMenuDetails = loadMenuDetails;
-
-console.log('✅ admin.js loaded');

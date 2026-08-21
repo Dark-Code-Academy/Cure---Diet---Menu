@@ -326,6 +326,8 @@ function confirmWeek() {
     renderDays(currentMenuId);
 }
 
+// ===== دالة عرض الأيام =====
+// ===== دالة عرض الأيام =====
 async function renderDays(menuId) {
     console.log('🎨 Rendering days...');
     var container = document.getElementById('daysContainer');
@@ -344,18 +346,41 @@ async function renderDays(menuId) {
         return;
     }
     
+    // ===== أيام الأسبوع بالترتيب الصحيح =====
+    var weekDays = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
+    
+    // ===== حساب تاريخ أول يوم سبت في الأسبوع المختار =====
     var startParts = selectedWeek.start_date.split('/');
     var startDate = new Date(startParts[2], startParts[1] - 1, startParts[0]);
     
-    for (var d = 0; d < days.length; d++) {
-        var day = days[d];
+    // ===== إنشاء خريطة اليوم → التاريخ =====
+    var dayDateMap = {};
+    for (var i = 0; i < 7; i++) {
         var currentDate = new Date(startDate);
-        currentDate.setDate(startDate.getDate() + d);
-        var dateStr = formatDateFull(currentDate);
+        currentDate.setDate(startDate.getDate() + i);
+        dayDateMap[weekDays[i]] = formatDateFull(currentDate);
+    }
+    
+    // ===== عرض الأيام بالترتيب الصحيح =====
+    for (var d = 0; d < weekDays.length; d++) {
+        var dayName = weekDays[d];
+        var dayObj = null;
+        
+        // البحث عن اليوم في البيانات
+        for (var j = 0; j < days.length; j++) {
+            if (days[j].day_name === dayName) {
+                dayObj = days[j];
+                break;
+            }
+        }
+        
+        if (!dayObj) continue; // لو اليوم مش موجود في Firebase، نتجاوزه
+        
+        var dateStr = dayDateMap[dayName] || '';
         
         var col = document.createElement('div');
         col.className = 'col-4 col-md-2';
-        col.innerHTML = '<div class="day-btn" onclick="selectDay(\'' + day.id + '\')"><span class="day-name">' + day.day_name + '</span><span class="day-date">' + dateStr + '</span></div>';
+        col.innerHTML = '<div class="day-btn" onclick="selectDay(\'' + dayObj.id + '\')"><span class="day-name">' + dayName + '</span><span class="day-date">' + dateStr + '</span></div>';
         container.appendChild(col);
     }
     

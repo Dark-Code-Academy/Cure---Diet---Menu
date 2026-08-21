@@ -1,0 +1,244 @@
+/* ============================================
+   Cure Diet - Admin CSS
+   ============================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: #f0f2f5;
+    direction: rtl;
+}
+
+/* ===== Cards ===== */
+.card {
+    border-radius: 16px;
+    border: none;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.card-header {
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 14px 20px;
+}
+
+/* ===== Menu Items ===== */
+.menu-item {
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    background: #fff;
+    transition: all 0.3s ease;
+}
+
+.menu-item:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    border-color: #e54750;
+}
+
+.menu-item .menu-icon {
+    font-size: 1.8rem;
+}
+
+.menu-item .menu-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #2c3e50;
+}
+
+.menu-item .menu-actions .btn {
+    border-radius: 8px;
+    padding: 4px 14px;
+    font-size: 13px;
+}
+
+/* ===== Sub Sections ===== */
+.sub-section {
+    padding-right: 25px;
+    border-right: 3px solid #e54750;
+    margin: 12px 0 0;
+}
+
+.sub-section .section-title {
+    font-size: 13px;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+/* ===== Day Items ===== */
+.day-item {
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    padding: 10px 15px;
+    margin: 6px 0;
+    background: #f8f9fa;
+    transition: all 0.2s ease;
+}
+
+.day-item:hover {
+    background: #f1f3f5;
+}
+
+.day-item .day-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #2c3e50;
+}
+
+.day-item .day-actions .btn {
+    border-radius: 6px;
+    padding: 2px 10px;
+    font-size: 12px;
+}
+
+/* ===== Meal Items ===== */
+.meal-item {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 4px 12px;
+    margin: 3px 4px;
+    background: #fff;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.meal-item:hover {
+    border-color: #e54750;
+}
+
+.meal-item .meal-type-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 50px;
+    background: #e9ecef;
+    color: #6c757d;
+}
+
+.meal-item .btn-delete-meal {
+    border: none;
+    background: transparent;
+    color: #dc3545;
+    padding: 0 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.meal-item .btn-delete-meal:hover {
+    color: #c82333;
+    transform: scale(1.2);
+}
+
+/* ===== Buttons ===== */
+.btn-sm {
+    padding: 4px 14px;
+    font-size: 12px;
+    border-radius: 8px;
+}
+
+.btn-outline-success.btn-sm {
+    border-width: 1.5px;
+}
+
+.btn-outline-primary.btn-sm {
+    border-width: 1.5px;
+}
+
+/* ===== Empty State ===== */
+.empty-state {
+    text-align: center;
+    padding: 30px 0;
+    color: #6c757d;
+}
+
+.empty-state .empty-icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+}
+
+.empty-state .empty-text {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.empty-state .empty-hint {
+    font-size: 0.85rem;
+    color: #adb5bd;
+}
+
+/* ===== Toast / Alert ===== */
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 9999;
+}
+
+.toast-custom {
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px 20px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideIn 0.3s ease;
+}
+
+.toast-custom.success {
+    border-right: 4px solid #28a745;
+}
+
+.toast-custom.error {
+    border-right: 4px solid #dc3545;
+}
+
+.toast-custom .toast-icon {
+    font-size: 1.2rem;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+    .sub-section {
+        padding-right: 15px;
+    }
+    .menu-item {
+        padding: 12px 15px;
+    }
+    .day-item {
+        padding: 8px 12px;
+    }
+    .meal-item {
+        font-size: 12px;
+        padding: 3px 10px;
+    }
+}
+
+@media (max-width: 576px) {
+    .container {
+        padding: 10px;
+    }
+    .card-header {
+        font-size: 0.9rem;
+        padding: 10px 15px;
+    }
+    .menu-item .menu-name {
+        font-size: 0.95rem;
+    }
+}

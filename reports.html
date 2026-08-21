@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>التقارير - Cure Diet</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; background: #f0f2f5; direction: rtl; }
+        
+        .header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: #fff; padding: 30px 0; margin-bottom: 30px; }
+        .header h1 { color: #fff; font-weight: 700; }
+        
+        .card { border-radius: 16px; border: none; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+        .card-header { font-weight: 600; padding: 14px 20px; }
+        
+        .filter-card { background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+        
+        .stat-card { background: #fff; border-radius: 12px; padding: 15px 20px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .stat-card .number { font-size: 28px; font-weight: 700; color: #e54750; }
+        .stat-card .label { font-size: 14px; color: #6c757d; }
+        
+        .table-container { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+        .table th { background: #2c3e50; color: #fff; text-align: center; white-space: nowrap; }
+        .table td { text-align: center; vertical-align: middle; font-size: 14px; }
+        .table tbody tr:hover { background: #f8f9fa; }
+        
+        .week-badge { padding: 4px 12px; border-radius: 50px; font-size: 12px; font-weight: 600; }
+        .week-badge.week1 { background: #d4edda; color: #155724; }
+        .week-badge.week2 { background: #cce5ff; color: #004085; }
+        
+        .status-badge { padding: 4px 12px; border-radius: 50px; font-size: 12px; }
+        .status-badge.new { background: #fff3cd; color: #856404; }
+        .status-badge.completed { background: #d4edda; color: #155724; }
+        .status-badge.cancelled { background: #f8d7da; color: #721c24; }
+        
+        .btn-export { background: #28a745; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; }
+        .btn-export:hover { background: #218838; color: #fff; }
+        
+        .btn-delete { background: #dc3545; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; }
+        .btn-delete:hover { background: #c82333; color: #fff; }
+        
+        .btn-delete-all { background: #6c757d; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; }
+        .btn-delete-all:hover { background: #5a6268; color: #fff; }
+        
+        .week-selector { display: flex; gap: 10px; flex-wrap: wrap; }
+        .week-selector .btn-week { border-radius: 50px; padding: 8px 25px; border: 2px solid #e9ecef; background: #fff; transition: all 0.3s; }
+        .week-selector .btn-week.active { border-color: #e54750; background: #e54750; color: #fff; }
+        .week-selector .btn-week:hover { border-color: #e54750; }
+        
+        .filter-input { border-radius: 10px; border: 2px solid #e9ecef; padding: 8px 15px; }
+        .filter-input:focus { border-color: #e54750; outline: none; box-shadow: 0 0 0 3px rgba(229,71,80,0.1); }
+        
+        .action-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+        .action-buttons .btn { font-size: 12px; padding: 4px 12px; }
+        
+        .delete-btn { background: none; border: none; color: #dc3545; cursor: pointer; font-size: 18px; transition: all 0.3s; }
+        .delete-btn:hover { color: #c82333; transform: scale(1.2); }
+        
+        .toast-container { position: fixed; bottom: 20px; left: 20px; z-index: 9999; }
+        .toast-custom { background: #fff; border-radius: 12px; padding: 12px 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); margin-top: 8px; display: flex; align-items: center; gap: 10px; animation: slideIn 0.3s ease; }
+        .toast-custom.success { border-right: 4px solid #28a745; }
+        .toast-custom.error { border-right: 4px solid #dc3545; }
+        .toast-custom.warning { border-right: 4px solid #ffc107; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
+        @media (max-width: 768px) {
+            .stat-card .number { font-size: 20px; }
+            .table-responsive { font-size: 13px; }
+            .table th, .table td { padding: 8px; }
+            .action-buttons { flex-direction: column; gap: 4px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="header">
+    <div class="container">
+        <div class="d-flex flex-wrap align-items-center justify-content-between">
+            <div>
+                <h1>📊 التقارير والطلبات</h1>
+                <p class="text-white-50 mb-0">إدارة ومتابعة جميع طلبات العملاء</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="admin.html" class="btn btn-outline-light btn-sm">⚙️ لوحة التحكم</a>
+                <a href="index.html" class="btn btn-outline-light btn-sm">🏠 الموقع</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MAIN CONTENT ===== -->
+<div class="container">
+
+    <!-- ===== الفلترة ===== -->
+    <div class="filter-card">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="fw-bold small">🔍 بحث بالاسم</label>
+                <input type="text" id="searchName" class="filter-input w-100" placeholder="ابحث باسم العميل..." oninput="applyFilters()">
+            </div>
+            <div class="col-md-3">
+                <label class="fw-bold small">📋 المنيو</label>
+                <select id="filterMenu" class="filter-input w-100" onchange="applyFilters()">
+                    <option value="">كل المنيوات</option>
+                </select>
+            </div>
+            </div>
+            <div class="col-md-2">
+                <label class="fw-bold small">📌 الحالة</label>
+                <select id="filterStatus" class="filter-input w-100" onchange="applyFilters()">
+                    <option value="">كل الحالات</option>
+                    <option value="جديد">جديد</option>
+                    <option value="مكتمل">مكتمل</option>
+                    <option value="ملغي">ملغي</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="fw-bold small">⚡ إجراءات سريعة</label>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary w-100" onclick="loadReports()">🔄 تحديث</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ===== أزرار الحذف ===== -->
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-success" onclick="exportCSV()">📥 تصدير CSV</button>
+                    <button class="btn btn-danger" onclick="deleteSelectedOrders()">🗑 حذف المحدد</button>
+                    <button class="btn btn-warning" onclick="deleteFilteredOrders()">🗑 حذف المظهر</button>
+                    <button class="btn btn-secondary" onclick="deleteAllOrders()">🗑 حذف الكل</button>
+                    <button class="btn btn-outline-secondary" onclick="toggleSelectAll()">☑ تحديد الكل</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== الإحصائيات ===== -->
+    <div class="row g-3 mb-4" id="statsContainer">
+        <div class="col-6 col-md-2">
+            <div class="stat-card">
+                <div class="number" id="totalOrders">0</div>
+                <div class="label">📦 إجمالي الطلبات</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="stat-card">
+                <div class="number" id="totalCustomers">0</div>
+                <div class="label">👤 عدد العملاء</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="stat-card">
+                <div class="number" id="totalMenus">0</div>
+                <div class="label">📋 المنيوات المطلوبة</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="stat-card">
+                <div class="number" id="weekOrders">0</div>
+                <div class="label">📅 طلبات هذا الأسبوع</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="stat-card">
+                <div class="number" id="newOrders">0</div>
+                <div class="label">🆕 طلبات جديدة</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="stat-card">
+                <div class="number" id="completedOrders">0</div>
+                <div class="label">✅ طلبات مكتملة</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== جدول الطلبات ===== -->
+    <div class="table-container">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">📋 قائمة الطلبات</h5>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-secondary" id="ordersCount">0 طلب</span>
+                <span class="badge bg-primary" id="selectedCount">0 محدد</span>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">
+                            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
+                        </th>
+                        <th>#</th>
+                        <th>📅 التاريخ</th>
+                        <th>📋 المنيو</th>
+                        <th>📅 اليوم</th>
+                        <th>👤 العميل</th>
+                        <th>🍳 الفطور</th>
+                        <th>🍗 الغداء</th>
+                        <th>🌙 العشاء</th>
+                        <th>🍰 السناك</th>
+                        <th>🥗 السلطة</th>
+                        <th>📊 الأسبوع</th>
+                        <th>📆 نطاق الأسبوع</th>
+                        <th>📌 الحالة</th>
+                        <th style="width:80px;">⚡</th>
+                    </tr>
+                </thead>
+                <tbody id="ordersTable">
+                    <tr>
+                        <td colspan="15" class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2">جاري تحميل الطلبات...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script src="reports.js"></script>
+
+</body>
+</html>

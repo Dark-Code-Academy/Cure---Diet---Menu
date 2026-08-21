@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cure Diet - كيور دايت</title>
+    <link rel="icon" type="image/png" href="images/logo.png">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="main.css">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<section class="section-place-header text-center">
+    <div class="container">
+        <img src="images/logo.png" alt="Cure Diet" class="avatar mb-3">
+        <h1>🥗 Cure Diet - كيور دايت</h1>
+        <p>مركز تغذية وأمراض السمنة والنحافة</p>
+        <div class="header-buttons d-flex justify-content-center gap-2 mt-3 flex-wrap">
+            <a href="https://www.instagram.com/cure.dietkw" target="_blank" class="btn btn-light btn-sm">📸 انستجرام</a>
+            <a href="https://wa.me/+96566473580" target="_blank" class="btn btn-success btn-sm">💬 واتساب</a>
+        </div>
+    </div>
+</section>
+
+<!-- ===== BREADCRUMB ===== -->
+<div class="breadcrumb-nav">
+    <div class="container">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn-back" id="btnBack" style="display:none;" onclick="goBack()">⬅ رجوع</button>
+                <span class="fw-bold" id="breadcrumbTitle">اختر المنيو</span>
+            </div>
+            <div>
+                <span class="badge bg-primary" id="stepCounter">الخطوة 1 من 4</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MAIN CONTENT ===== -->
+<div class="container py-4">
+
+    <!-- ===== Step 1: Menus ===== -->
+    <div id="stepMenus" class="fade-in">
+        <h4 class="text-center mb-4">📋 اختر المنيو المناسب لك</h4>
+        <div class="step-indicator">
+            <div class="step-dot active">1</div>
+            <div class="step-line"></div>
+            <div class="step-dot">2</div>
+            <div class="step-line"></div>
+            <div class="step-dot">3</div>
+            <div class="step-line"></div>
+            <div class="step-dot">4</div>
+        </div>
+        <div class="row g-3 justify-content-center" id="menusContainer">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2">جاري تحميل المنيوات...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Step 2: Week Selection ===== -->
+    <div id="stepWeek" class="hidden-section fade-in">
+        <h4 class="text-center mb-4">📅 اختر الأسبوع</h4>
+        <div class="step-indicator">
+            <div class="step-dot done">✓</div>
+            <div class="step-line done"></div>
+            <div class="step-dot active">2</div>
+            <div class="step-line"></div>
+            <div class="step-dot">3</div>
+            <div class="step-line"></div>
+            <div class="step-dot">4</div>
+        </div>
+
+        <div class="week-selector-box">
+            <div class="week-title">📆 اختر الأسبوع الذي تريد طلب وجباته</div>
+            <div class="week-options" id="weekOptions">
+                <!-- سيتم إنشاؤها بواسطة JavaScript -->
+            </div>
+            <div class="week-info" id="weekInfo">
+                <span class="label">📅 نطاق الأسبوع:</span>
+                <span class="value" id="weekRange">لم يتم الاختيار</span>
+                <span class="badge-week" id="weekBadge">اختر أسبوع</span>
+            </div>
+        </div>
+
+        <div class="text-center mt-3">
+            <button class="btn btn-confirm-week" onclick="confirmWeek()" disabled id="confirmWeekBtn">
+                ✅ تأكيد الأسبوع ومتابعة
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== Step 3: Days ===== -->
+    <div id="stepDays" class="hidden-section fade-in">
+        <h4 class="text-center mb-4">📅 اختر اليوم</h4>
+        <div class="step-indicator">
+            <div class="step-dot done">✓</div>
+            <div class="step-line done"></div>
+            <div class="step-dot done">✓</div>
+            <div class="step-line done"></div>
+            <div class="step-dot active">3</div>
+            <div class="step-line"></div>
+            <div class="step-dot">4</div>
+        </div>
+        <div class="row g-2 justify-content-center" id="daysContainer">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2">جاري تحميل الأيام...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Step 4: Meals ===== -->
+    <div id="stepMeals" class="hidden-section fade-in">
+        <h4 class="text-center mb-4">🍽️ اختر وجباتك</h4>
+        <div class="step-indicator">
+            <div class="step-dot done">✓</div>
+            <div class="step-line done"></div>
+            <div class="step-dot done">✓</div>
+            <div class="step-line done"></div>
+            <div class="step-dot done">✓</div>
+            <div class="step-line"></div>
+            <div class="step-dot active">4</div>
+        </div>
+
+        <!-- معلومات الأسبوع -->
+        <div class="selected-week-info mb-3" id="selectedWeekInfo">
+            <strong>📅 الأسبوع المختار:</strong> <span id="selectedWeekDisplay">-</span>
+        </div>
+
+        <div class="row g-3" id="mealsContainer">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2">جاري تحميل الوجبات...</p>
+            </div>
+        </div>
+
+        <!-- حقل الاسم وملخص الطلب -->
+        <div class="row mt-4 g-3">
+            <div class="col-md-6">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body">
+                        <h5 class="card-title">👤 بيانات العميل</h5>
+                        <input type="text" id="customer_name" class="form-control form-control-lg" placeholder="اكتب اسمك">
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="summary-box" id="orderSummaryBox">
+                    <h5 class="mb-3">📋 ملخص الطلب</h5>
+                    <div id="orderSummary">
+                        <p class="text-muted small">لم يتم اختيار أي وجبات بعد</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <button id="submitOrder" class="btn btn-submit btn-lg" disabled onclick="submitOrder()">
+                📤 إرسال الطلب
+            </button>
+            <p class="text-muted small mt-2" id="submitHint">يرجى اختيار جميع الوجبات لتفعيل الزر</p>
+        </div>
+    </div>
+
+</div>
+
+<!-- ===== FOOTER ===== -->
+<div class="footer">
+    <div class="container">
+        <p class="mb-0">جميع الحقوق محفوظة &copy; 2026 <a href="#">Cure Diet</a></p>
+    </div>
+</div>
+
+<script src="main.js"></script>
+
+</body>
+</html>

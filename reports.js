@@ -1,5 +1,5 @@
 // ============================================
-// Cure Diet - Reports JavaScript (مع الأسابيع)
+// Cure Diet - Reports JavaScript (معدل - أسابيع A,B,C,D)
 // ============================================
 
 // ===== Firebase Configuration =====
@@ -26,16 +26,18 @@ let filteredOrders = [];
 let selectedOrders = new Set();
 let currentWeek = 'all';
 let menusList = [];
+let allWeeksList = [];
 
 // ============================================================
-// ===== حساب رقم الأسبوع من التاريخ =====
+// ===== حساب الأسبوع من التاريخ (يعتمد على السبت) =====
 // ============================================================
 
-function getWeekNumber(dateStr) {
+function getWeekNumberFromDate(dateStr) {
     if (!dateStr) return 0;
     
     let date = new Date(dateStr);
     if (isNaN(date.getTime())) {
+        // محاولة تحويل التاريخ بصيغة DD/MM/YYYY
         const parts = dateStr.match(/(\d+)\/(\d+)\/(\d+)/);
         if (parts) {
             date = new Date(parts[3], parts[2] - 1, parts[1]);
@@ -44,15 +46,114 @@ function getWeekNumber(dateStr) {
     
     if (isNaN(date.getTime())) return 0;
     
-    const startOfYear = new Date(date.getFullYear(), 0, 1);
-    const diff = (date - startOfYear) / (7 * 24 * 60 * 60 * 1000);
-    return Math.ceil(diff);
+    // حساب الأسبوع بناءً على السبت
+    const saturday = getCurrentWeekSaturday();
+    const diffDays = Math.floor((date - saturday) / (24 * 60 * 60 * 1000));
+    const weekOffset = Math.floor(diffDays / 7);
+    
+    // الأسبوع الحالي = 0، القادم = 1، إلخ
+    // نرجع رقم الأسبوع من 1-4
+    if (weekOffset >= 0 && weekOffset < 4) {
+        return weekOffset + 1;
+    }
+    
+    return 0;
+}
+
+function getCurrentWeekSaturday() {
+    const today = new Date();
+    const currentDay = today.getDay();
+    
+    const saturday = new Date(today);
+    
+    if (currentDay === 6) {
+        saturday.setHours(0, 0, 0, 0);
+        return saturday;
+    }
+    
+    const daysToSaturday = currentDay + 1;
+    saturday.setDate(today.getDate() - daysToSaturday);
+    saturday.setHours(0, 0, 0, 0);
+    
+    return saturday;
 }
 
 function getWeekLabel(weekNum) {
     if (weekNum === 0) return '-';
-    const weekIndex = weekNum % 2;
-    return weekIndex === 1 ? 'الأسبوع الأول' : 'الأسبوع الثاني';
+    const weekLetters = ['A', 'B', 'C', 'D'];
+    const index = (weekNum - 1) % 4;
+    return 'الأسبوع ' + weekLetters[index];
+}
+
+function getWeekLetter(weekNum) {
+    if (weekNum === 0) return '-';
+    const weekLetters = ['A', 'B', 'C', 'D'];
+    const index = (weekNum - 1) % 4;
+    return weekLetters[index];
+}
+
+// ============================================================
+// ===== جلب الأسابيع من Firebase =====
+// ============================================================
+
+async function loadWeeksList() {
+    try {
+        const snapshot = await db.collection('weeks')
+            .where('active', '==', true)
+            .orderBy('week_number', 'asc')
+            .get();
+        
+        allWeeksList = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            allWeeksList.push({
+                id: doc.id,
+                week_number: data.week_number,
+                week_name: data.week_name,
+                start_date: data.start_date,
+                end_date: data.end_date,
+                is_current: data.is_current || false
+            });
+        });
+        
+        // تحديث فلتر الأسابيع
+        populateWeekFilter();
+        
+        console.log('✅ Weeks loaded:', allWeeksList.length);
+        return allWeeksList;
+    } catch (error) {
+        console.error('❌ Error loading weeks:', error);
+        return [];
+    }
+}
+
+// ============================================================
+// ===== populate Week Filter =====
+// ============================================================
+
+function populateWeekFilter() {
+    const container = document.getElementById('weekFilterButtons');
+    if (!container) return;
+    
+    // حفظ الأسبوع المحدد حالياً
+    const currentWeekValue = currentWeek;
+    
+    container.innerHTML = `
+        <button class="btn-week active" data-week="all" onclick="setWeek('all')">
+            📅 الكل
+        </button>
+    `;
+    
+    allWeeksList.forEach(week => {
+        const isActive = currentWeekValue === week.week_number.toString() ? 'active' : '';
+        const currentBadge = week.is_current ? '📍' : '';
+        container.innerHTML += `
+            <button class="btn-week ${isActive}" data-week="${week.week_number}" onclick="setWeek('${week.week_number}')">
+                ${currentBadge} ${week.week_name}
+                <span style="font-size:10px;display:block;color:#6c757d;">${week.start_date} → ${week.end_date}</span>
+            </button>
+        `;
+    });
 }
 
 // ============================================================
@@ -80,6 +181,9 @@ async function loadReports() {
         });
         populateMenuFilter();
         
+        // جلب الأسابيع
+        await loadWeeksList();
+        
         // جلب الطلبات
         const ordersSnapshot = await db.collection('orders')
             .orderBy('timestamp', 'desc')
@@ -88,12 +192,31 @@ async function loadReports() {
         allOrders = [];
         ordersSnapshot.forEach(doc => {
             const data = doc.data();
-            const weekNum = getWeekNumber(data.timestamp || data.createdAt || data.order_date);
+            // محاولة استخراج رقم الأسبوع من البيانات
+            let weekNum = 0;
+            let weekName = data.week || '';
+            
+            // إذا كان الأسبوع مخزناً كاسم (مثل "الأسبوع A")، نحاول استخراج الرقم
+            if (weekName && weekName.includes('الأسبوع ')) {
+                const letter = weekName.replace('الأسبوع ', '').trim();
+                const weekLetters = ['A', 'B', 'C', 'D'];
+                const index = weekLetters.indexOf(letter);
+                if (index !== -1) {
+                    weekNum = index + 1;
+                }
+            }
+            
+            // إذا لم نجد رقم الأسبوع، نحسبه من التاريخ
+            if (weekNum === 0) {
+                weekNum = getWeekNumberFromDate(data.timestamp || data.createdAt || data.order_date);
+            }
+            
             allOrders.push({
                 id: doc.id,
                 ...data,
-                week: weekNum,
-                weekLabel: data.week || getWeekLabel(weekNum),
+                week_number: weekNum,
+                weekLabel: weekName || getWeekLabel(weekNum),
+                weekLetter: getWeekLetter(weekNum),
                 weekRange: data.week_range || '-'
             });
         });
@@ -122,6 +245,7 @@ async function loadReports() {
 
 function populateMenuFilter() {
     const select = document.getElementById('filterMenu');
+    if (!select) return;
     select.innerHTML = '<option value="">كل المنيوات</option>';
     menusList.forEach(menu => {
         select.innerHTML += `<option value="${menu.name}">${menu.name}</option>`;
@@ -149,8 +273,7 @@ function applyFilters() {
         }
         if (currentWeek !== 'all') {
             const weekNum = parseInt(currentWeek);
-            const orderWeek = order.week % 2 || 2;
-            if (orderWeek !== weekNum) {
+            if (order.week_number !== weekNum) {
                 return false;
             }
         }
@@ -167,7 +290,7 @@ function applyFilters() {
 
 function setWeek(week) {
     currentWeek = week;
-    document.querySelectorAll('.btn-week').forEach(btn => {
+    document.querySelectorAll('#weekFilterButtons .btn-week').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.week === week);
     });
     applyFilters();
@@ -195,12 +318,18 @@ function renderTable() {
     
     let html = '';
     filteredOrders.forEach((order, index) => {
-        const weekClass = order.week % 2 === 1 ? 'week1' : 'week2';
         const isChecked = selectedOrders.has(order.id) ? 'checked' : '';
         
         // عرض الأسبوع ونطاق الأسبوع
         const weekDisplay = order.weekLabel || 'غير محدد';
         const weekRangeDisplay = order.week_range || '-';
+        
+        // تحديد لون الأسبوع حسب الحرف
+        let weekColor = '';
+        if (order.weekLetter === 'A') weekColor = '#ff6b6b';
+        else if (order.weekLetter === 'B') weekColor = '#4ecdc4';
+        else if (order.weekLetter === 'C') weekColor = '#45b7d1';
+        else if (order.weekLetter === 'D') weekColor = '#96ceb4';
         
         html += `
             <tr>
@@ -217,8 +346,12 @@ function renderTable() {
                 <td>${order.dinner || '-'}</td>
                 <td>${order.snack || '-'}</td>
                 <td>${order.salad || '-'}</td>
-                <td><span class="week-badge ${weekClass}">${weekDisplay}</span></td>
-                <td style="font-size:12px;color:#6c757d;">${weekRangeDisplay}</td>
+                <td>
+                    <span class="week-badge" style="background:${weekColor};color:white;padding:3px 10px;border-radius:12px;font-size:12px;">
+                        ${weekDisplay}
+                    </span>
+                </td>
+                <td style="font-size:11px;color:#6c757d;">${weekRangeDisplay}</td>
                 <td>
                     <select class="form-select form-select-sm" style="width:100px;font-size:12px;" onchange="updateStatus('${order.id}', this.value)">
                         <option value="جديد" ${order.status === 'جديد' ? 'selected' : ''}>جديد</option>
@@ -248,11 +381,11 @@ function updateStats() {
     const uniqueMenus = new Set(allOrders.map(o => o.menu).filter(Boolean));
     document.getElementById('totalMenus').textContent = uniqueMenus.size;
     
-    const thisWeek = allOrders.filter(o => {
-        const weekNum = o.week % 2 || 2;
-        return weekNum === 1;
+    // عدد طلبات الأسبوع الحالي
+    const currentWeekOrders = allOrders.filter(o => {
+        return allWeeksList.some(w => w.is_current && o.week_number === w.week_number);
     });
-    document.getElementById('weekOrders').textContent = thisWeek.length;
+    document.getElementById('weekOrders').textContent = currentWeekOrders.length;
     
     const newOrders = allOrders.filter(o => o.status === 'جديد');
     document.getElementById('newOrders').textContent = newOrders.length;
@@ -453,6 +586,17 @@ function createToastContainer() {
 }
 
 // ============================================================
+// ===== إعادة تحميل الأسابيع (للتحديث اليدوي) =====
+// ============================================================
+
+async function refreshWeeks() {
+    showToast('🔄 جاري تحديث الأسابيع...', 'warning');
+    await loadWeeksList();
+    applyFilters();
+    showToast('✅ تم تحديث الأسابيع', 'success');
+}
+
+// ============================================================
 // ===== التشغيل عند التحميل =====
 // ============================================================
 
@@ -473,3 +617,4 @@ window.deleteAllOrders = deleteAllOrders;
 window.toggleOrder = toggleOrder;
 window.toggleSelectAll = toggleSelectAll;
 window.updateStatus = updateStatus;
+window.refreshWeeks = refreshWeeks;

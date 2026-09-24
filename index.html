@@ -29,6 +29,193 @@
     </div>
 </section>
 
+<!-- ===== AUTO IMAGE SLIDER ===== -->
+<section class="menu-slider">
+    <div class="slider-container">
+
+        <div class="slide active">
+            <img src="images/two.jpg" alt="Cure Diet">
+        </div>
+
+        <div class="slide">
+            <img src="images/twoo.jpg" alt="Cure Diet">
+        </div>
+        <div class="slide">
+            <img src="images/one.jpg" alt="Cure Diet">
+        </div>
+
+        <div class="slide">
+            <img src="images/three.jpg" alt="Cure Diet">
+        </div>
+        <div class="slide">
+            <img src="images/four.jpg" alt="Cure Diet">
+        </div>
+        <div class="slide">
+            <img src="images/five.jpg" alt="Cure Diet">
+        </div>
+        <div class="slide">
+            <img src="images/six.jpg" alt="Cure Diet">
+        </div>
+        <div class="slide">
+            <img src="images/siven.jpg" alt="Cure Diet">
+        </div>
+        <div class="slide">
+            <img src="images/ate.jpg" alt="Cure Diet">
+        </div>
+        <div class="slide">
+            <img src="images/nine.jpg" alt="Cure Diet">
+        </div>
+        <div class="slide">
+            <img src="images/ten.jpg" alt="Cure Diet">
+        </div>
+        <div class="slide">
+            <img src="images/eleven.jpg" alt="Cure Diet">
+        </div>
+
+
+       
+
+        <!-- نقاط السلايدر -->
+        <div class="slider-dots">
+            <span class="dot active" onclick="showSlide(0)"></span>
+            <span class="dot" onclick="showSlide(1)"></span>
+            <span class="dot" onclick="showSlide(2)"></span>
+            <span class="dot" onclick="showSlide(3)"></span>
+            <span class="dot" onclick="showSlide(4)"></span>
+            <span class="dot" onclick="showSlide(5)"></span>
+            <span class="dot" onclick="showSlide(6)"></span>
+            <span class="dot" onclick="showSlide(7)"></span>
+            <span class="dot" onclick="showSlide(8)"></span>
+            <span class="dot" onclick="showSlide(9)"></span>
+            <span class="dot" onclick="showSlide(10)"></span>
+            <span class="dot" onclick="showSlide(11)"></span>
+        </div>
+
+    </div>
+</section>
+
+<style>
+/* ===== AUTO IMAGE SLIDER ===== */
+
+.menu-slider {
+    width: 100%;
+    padding: 15px 15px 5px;
+    background: #fff;
+}
+
+.slider-container {
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+    height: 400px;
+    margin: auto;
+    overflow: hidden;
+    border-radius: 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.12);
+}
+
+.slide {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.8s ease-in-out;
+}
+
+.slide.active {
+    opacity: 1;
+}
+
+.slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* النقاط */
+.slider-dots {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 7px;
+    z-index: 10;
+}
+
+.dot {
+    width: 9px;
+    height: 9px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.dot.active {
+    width: 25px;
+    border-radius: 10px;
+    background: #ffffff;
+}
+
+/* الموبايل */
+@media (max-width: 768px) {
+    .menu-slider {
+        padding: 10px 10px 3px;
+    }
+
+    .slider-container {
+        height: 180px;
+        border-radius: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .slider-container {
+        height: 150px;
+        border-radius: 12px;
+    }
+}
+</style>
+
+<script>
+let currentSlide = 0;
+const slides = document.querySelectorAll(".slide");
+const dots = document.querySelectorAll(".dot");
+
+function showSlide(index) {
+
+    slides.forEach(slide => {
+        slide.classList.remove("active");
+    });
+
+    dots.forEach(dot => {
+        dot.classList.remove("active");
+    });
+
+    currentSlide = index;
+
+    slides[currentSlide].classList.add("active");
+    dots[currentSlide].classList.add("active");
+}
+
+/* تقليب تلقائي كل 4 ثواني */
+setInterval(() => {
+
+    currentSlide++;
+
+    if (currentSlide >= slides.length) {
+        currentSlide = 0;
+    }
+
+    showSlide(currentSlide);
+
+}, 4000);
+</script>
+```
+
 <!-- ===== BREADCRUMB ===== -->
 <div class="breadcrumb-nav">
     <div class="container">

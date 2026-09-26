@@ -838,8 +838,21 @@ async function submitOrder() {
     }
     var weekName = selectedWeek ? selectedWeek.week_name : '';
     var weekRange = selectedWeek ? 'من ' + selectedWeek.start_date + ' إلى ' + selectedWeek.end_date : '';
-    var orderDate = new Date().toLocaleDateString('ar-EG');
-    
+// حساب تاريخ اليوم المختار داخل الأسبوع
+var startParts = selectedWeek.start_date.split('/');
+var startDate = new Date(
+    startParts[2],
+    startParts[1] - 1,
+    startParts[0]
+);
+
+var dayIndex = DAYS_AR.indexOf(dayName);
+
+var selectedDate = new Date(startDate);
+selectedDate.setDate(startDate.getDate() + dayIndex);
+selectedDate.setHours(0, 0, 0, 0);
+
+var orderDate = selectedDate.toLocaleDateString('ar-EG');    
     try {
         await db.collection('orders').add({
             menu: menuName,
@@ -863,7 +876,7 @@ async function submitOrder() {
         console.error('❌ Error saving order:', error);
     }
     
-    var message = 'طلب جديد - Cure Diet\n\nالمنيو: ' + menuName + '\nاليوم: ' + dayName + ' (' + orderDate + ')\n' + weekName + '\nنطاق الأسبوع: ' + weekRange + '\n\nالاسم: ' + name + '\n\nالفطور: ' + (selectedMeals.breakfast || '') + '\nالغداء: ' + (selectedMeals.lunch || '') + '\nالعشاء: ' + (selectedMeals.dinner || '') + '\nالسناك: ' + (selectedMeals.snack || '') + '\nالسلطة: ' + (selectedMeals.salad || '');
+    var message = '\nاليوم: ' + dayName + ' (' + orderDate + ')\n' + weekName +   '\n\nالاسم: ' + name + '\n\nالفطور: ' + (selectedMeals.breakfast || '') + '\nالغداء: ' + (selectedMeals.lunch || '') + '\nالعشاء: ' + (selectedMeals.dinner || '') + '\nالسناك: ' + (selectedMeals.snack || '') + '\nالسلطة: ' + (selectedMeals.salad || '');
     
     var url = 'https://wa.me/+' + PHONE_NUMBER + '?text=' + encodeURIComponent(message);
     window.open(url, '_blank');

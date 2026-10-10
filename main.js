@@ -1,5 +1,5 @@
 // ============================================
-// Cure Diet - main.js (معدل نهائي - أسابيع A,B,C,D)
+// Cure Diet - main.js (الأسبوع الحالي + القادم فقط)
 // ============================================
 
 console.log('✅ main.js loaded!');
@@ -42,22 +42,18 @@ const MEAL_TYPES = [
 let menus = [];
 let days = [];
 let meals = [];
-let allWeeks = [];
 let currentMenuId = null;
 let currentDayId = null;
 let selectedMeals = {};
-let selectedWeek = null;
-let selectedWeekDates = [];
-let isFirstLoad = true;
+let selectedWeek = null; // ✅ الأسبوع المختار (الحالي أو القادم)
 
 // ============================================================
-// ===== حساب التواريخ - يبدأ من الأسبوع الحالي =====
+// ===== حساب تواريخ الأسبوع =====
 // ============================================================
 
 function getCurrentWeekSaturday() {
     const today = new Date();
     const currentDay = today.getDay();
-    
     const saturday = new Date(today);
     
     if (currentDay === 6) {
@@ -68,7 +64,6 @@ function getCurrentWeekSaturday() {
     const daysToSaturday = currentDay + 1;
     saturday.setDate(today.getDate() - daysToSaturday);
     saturday.setHours(0, 0, 0, 0);
-    
     return saturday;
 }
 
@@ -92,166 +87,28 @@ function formatDateFull(date) {
     return d + '/' + m + '/' + y;
 }
 
-function isWeekEnded(weekEndDate) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const endDate = new Date(weekEndDate);
-    endDate.setHours(0, 0, 0, 0);
-    return endDate < today;
+// ✅ بيانات الأسبوع الحالي
+function getCurrentWeekInfo() {
+    const dates = getWeekDates(0);
+    return {
+        week_number: 1,
+        week_name: 'الأسبوع الحالي',
+        start_date: formatDateFull(dates[0]),
+        end_date: formatDateFull(dates[6]),
+        is_current: true
+    };
 }
 
-function isWeekCurrent(weekStartDate, weekEndDate) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const startDate = new Date(weekStartDate);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(weekEndDate);
-    endDate.setHours(0, 0, 0, 0);
-    return startDate <= today && today <= endDate;
-}
-
-// ============================================================
-// ===== مسح جميع الأسابيع من Firebase =====
-// ============================================================
-
-async function deleteAllWeeks() {
-    console.log('🗑️ جاري مسح جميع الأسابيع من Firebase...');
-    try {
-        const snapshot = await db.collection('weeks').get();
-        let count = 0;
-        for (const doc of snapshot.docs) {
-            await db.collection('weeks').doc(doc.id).delete();
-            count++;
-            console.log('🗑️ تم حذف:', doc.data().week_name || 'مستند بدون اسم');
-        }
-        console.log('✅ تم مسح ' + count + ' أسبوع بنجاح!');
-        return true;
-    } catch (error) {
-        console.error('❌ خطأ في مسح الأسابيع:', error);
-        return false;
-    }
-}
-
-// ============================================================
-// ===== تحديث الأسابيع (إنشاء جديد) =====
-// ============================================================
-
-async function createNewWeeks(menuId) {
-    console.log('🔄 إنشاء أسابيع جديدة للمنيو:', menuId);
-    
-    try {
-        // ✅ حروف الأسابيع: A, B, C, D
-        const weekLetters = ['A', 'B', 'C', 'D'];
-        
-        // ✅ إنشاء 4 أسابيع جديدة
-        const weeks = [];
-        for (let i = 0; i < 4; i++) {
-            const dates = getWeekDates(i);
-            const startDate = dates[0];
-            const endDate = dates[6];
-            
-            // ✅ اسم الأسبوع = "الأسبوع A" وليس "الأسبوع الأول"
-            const weekName = 'الأسبوع ' + weekLetters[i];
-            
-            const isEnded = isWeekEnded(endDate);
-            const isCurrent = isWeekCurrent(startDate, endDate);
-            
-            weeks.push({
-                menu_id: menuId,
-                week_number: i + 1,
-                week_name: weekName,  // ✅ الأسبوع A, B, C, D
-                start_date: formatDateFull(startDate),
-                end_date: formatDateFull(endDate),
-                active: !isEnded,
-                is_ended: isEnded,
-                is_current: isCurrent,
-                updatedAt: new Date()
-            });
-        }
-        
-        // ✅ حفظ الأسابيع الجديدة
-        for (const week of weeks) {
-            await db.collection('weeks').add(week);
-            console.log('✅ تم إضافة:', week.week_name);
-        }
-        
-        console.log('✅ تم إضافة 4 أسابيع جديدة (A, B, C, D)');
-        return weeks;
-        
-    } catch (error) {
-        console.error('❌ خطأ في إنشاء الأسابيع:', error);
-        return [];
-    }
-}
-
-// ============================================================
-// ===== تحميل الأسابيع =====
-// ============================================================
-
-async function loadWeeks(menuId) {
-    console.log('📡 Loading weeks for menu:', menuId);
-    try {
-        // ✅ إذا كانت أول مرة، نمسح كل الأسابيع من Firebase
-        if (isFirstLoad) {
-            console.log('🔄 أول تحميل للصفحة - جاري مسح جميع الأسابيع...');
-            await deleteAllWeeks();
-            isFirstLoad = false;
-        }
-        
-        const snapshot = await db.collection('weeks')
-            .where('menu_id', '==', menuId)
-            .get();
-        
-        // ✅ إذا كان عدد الأسابيع أقل من 4 أو مفيش → إنشاء جديد
-        if (snapshot.size < 4) {
-            console.log('⚠️ عدد الأسابيع غير كافٍ (' + snapshot.size + ')، جاري إنشاء أسابيع جديدة...');
-            await createNewWeeks(menuId);
-        } else {
-            // ✅ التحقق من أن الأسماء صحيحة (ليست "الأسبوع الأول" القديمة)
-            let needsUpdate = false;
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                if (data.week_name && data.week_name.includes('الأول') || data.week_name.includes('الثاني') || data.week_name.includes('الثالث') || data.week_name.includes('الرابع')) {
-                    needsUpdate = true;
-                    console.log('⚠️ تم العثور على اسم قديم:', data.week_name);
-                }
-            });
-            
-            if (needsUpdate) {
-                console.log('🔄 يوجد أسماء أسابيع قديمة، جاري التحديث...');
-                await createNewWeeks(menuId);
-            }
-        }
-        
-        // ✅ تحميل الأسابيع
-        const newSnapshot = await db.collection('weeks')
-            .where('menu_id', '==', menuId)
-            .where('active', '==', true)
-            .orderBy('week_number', 'asc')
-            .get();
-        
-        allWeeks = [];
-        newSnapshot.forEach(function(doc) {
-            const data = doc.data();
-            allWeeks.push({ 
-                id: doc.id, 
-                week_number: data.week_number, 
-                week_name: data.week_name, 
-                start_date: data.start_date, 
-                end_date: data.end_date,
-                is_ended: data.is_ended || false,
-                is_current: data.is_current || false
-            });
-        });
-        
-        console.log('✅ Weeks loaded:', allWeeks.length);
-        console.log('📋 أسماء الأسابيع:', allWeeks.map(w => w.week_name).join(', '));
-        return allWeeks;
-        
-    } catch (error) {
-        console.error('❌ Error loading weeks:', error);
-        return [];
-    }
+// ✅ بيانات الأسبوع القادم
+function getNextWeekInfo() {
+    const dates = getWeekDates(1);
+    return {
+        week_number: 2,
+        week_name: 'الأسبوع القادم',
+        start_date: formatDateFull(dates[0]),
+        end_date: formatDateFull(dates[6]),
+        is_current: false
+    };
 }
 
 // ============================================================
@@ -351,68 +208,44 @@ async function renderMenus() {
     console.log('✅ Menus rendered');
 }
 
-async function renderWeeks(menuId) {
-    console.log('🎨 Rendering weeks for menu:', menuId);
+// ✅ عرض أسبوعين فقط: الحالي والقادم
+async function renderWeeks() {
+    console.log('🎨 Rendering current + next weeks...');
     var container = document.getElementById('weekOptions');
     if (!container) {
         console.error('❌ weekOptions not found');
         return;
     }
     
-    container.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">جاري تحميل الأسابيع...</p></div>';
-    
-    await loadWeeks(menuId);
     container.innerHTML = '';
     
-    if (allWeeks.length === 0) {
-        container.innerHTML = '<div class="text-center py-3"><p class="text-muted">لا توجد أسابيع متاحة</p><p class="text-muted small">⚠️ تأكد من إضافة أسابيع في Firebase</p></div>';
-        return;
-    }
+    const currentWeek = getCurrentWeekInfo();
+    const nextWeek = getNextWeekInfo();
+    const weeks = [currentWeek, nextWeek];
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // ✅ ترتيب الأسابيع: الحالي أولاً
-    allWeeks.sort((a, b) => {
-        if (a.is_current && !b.is_current) return -1;
-        if (!a.is_current && b.is_current) return 1;
-        return a.week_number - b.week_number;
-    });
-    
-    for (var w = 0; w < allWeeks.length; w++) {
-        var week = allWeeks[w];
-        var btn = document.createElement('div');
+    for (let i = 0; i < weeks.length; i++) {
+        const week = weeks[i];
+        const btn = document.createElement('div');
         btn.className = 'btn-week';
         btn.dataset.week = week.week_number;
         
-        var endParts = week.end_date.split('/');
-        var endDate = new Date(endParts[2], endParts[1] - 1, endParts[0]);
-        endDate.setHours(0, 0, 0, 0);
-        var isPast = endDate < today;
-        
-        var startParts = week.start_date.split('/');
-        var startDate = new Date(startParts[2], startParts[1] - 1, startParts[0]);
-        startDate.setHours(0, 0, 0, 0);
-        var isCurrent = startDate <= today && today <= endDate;
-        
-        var badgeHTML = '';
-        if (isPast) {
-            badgeHTML = '<span class="badge bg-secondary" style="font-size:10px;display:block;margin-top:4px;">✅ منتهي</span>';
-        } else if (isCurrent) {
+        // ✅ badge حسب الحالة
+        let badgeHTML = '';
+        if (week.is_current) {
             badgeHTML = '<span class="badge bg-success" style="font-size:10px;display:block;margin-top:4px;">📍 الأسبوع الحالي</span>';
         } else {
             badgeHTML = '<span class="badge bg-info" style="font-size:10px;display:block;margin-top:4px;">⏳ قادم</span>';
         }
         
-        // ✅ عرض اسم الأسبوع (A, B, C, D) + التواريخ
-        btn.innerHTML = '<span class="week-label">📅 ' + week.week_name + '</span><span class="week-dates">' + week.start_date + ' → ' + week.end_date + '</span>' + badgeHTML;
+        btn.innerHTML = `
+            <span class="week-label">📅 ${week.week_name}</span>
+            <span class="week-dates">${week.start_date} → ${week.end_date}</span>
+            ${badgeHTML}
+        `;
         
-        btn.onclick = function(w, isPast) {
+        // ✅ عند الضغط: يختار الأسبوع ويفعّل زر التأكيد
+        btn.onclick = function(w) {
             return function() {
-                if (isPast) {
-                    alert('⚠️ هذا الأسبوع قد انتهى. يرجى اختيار أسبوع قادم.');
-                    return;
-                }
                 document.querySelectorAll('.btn-week').forEach(function(b) { b.classList.remove('active'); });
                 this.classList.add('active');
                 selectedWeek = w;
@@ -420,15 +253,27 @@ async function renderWeeks(menuId) {
                 document.getElementById('weekBadge').textContent = w.week_name;
                 document.getElementById('confirmWeekBtn').disabled = false;
             };
-        }(week, isPast);
+        }(week);
         container.appendChild(btn);
     }
     
-    console.log('✅ Weeks rendered');
+    // ✅ تعطيل زر التأكيد لحد ما يختار
+    if (document.getElementById('confirmWeekBtn')) {
+        document.getElementById('confirmWeekBtn').disabled = true;
+    }
+    if (document.getElementById('weekRange')) {
+        document.getElementById('weekRange').textContent = 'لم يتم الاختيار';
+    }
+    if (document.getElementById('weekBadge')) {
+        document.getElementById('weekBadge').textContent = 'اختر أسبوع';
+    }
+    
+    console.log('✅ Weeks rendered (2 only)');
 }
 
 function confirmWeek() {
     console.log('✅ confirmWeek called');
+    
     if (!selectedWeek) {
         alert('⚠️ يرجى اختيار أسبوع أولاً');
         return;
@@ -443,6 +288,7 @@ function confirmWeek() {
     renderDays(currentMenuId);
 }
 
+// ===== دالة عرض الأيام =====
 async function renderDays(menuId) {
     console.log('🎨 Rendering days...');
     var container = document.getElementById('daysContainer');
@@ -584,7 +430,6 @@ function selectMenu(menuId) {
     currentDayId = null;
     selectedMeals = {};
     selectedWeek = null;
-    selectedWeekDates = [];
     
     var btns = document.querySelectorAll('.menu-btn');
     for (var b = 0; b < btns.length; b++) {
@@ -611,7 +456,7 @@ function selectMenu(menuId) {
     document.getElementById('stepCounter').textContent = 'الخطوة 2 من 4';
     document.getElementById('btnBack').style.display = 'inline-block';
     
-    renderWeeks(menuId);
+    renderWeeks();
 }
 
 function selectDay(dayId) {
@@ -822,6 +667,11 @@ async function submitOrder() {
         return;
     }
     
+    if (!selectedWeek) {
+        alert('⚠️ حدث خطأ في تحديد الأسبوع');
+        return;
+    }
+    
     var menuName = '';
     for (var m = 0; m < menus.length; m++) {
         if (menus[m].id === currentMenuId) {
@@ -836,29 +686,28 @@ async function submitOrder() {
             break;
         }
     }
-    var weekName = selectedWeek ? selectedWeek.week_name : '';
-    var weekRange = selectedWeek ? 'من ' + selectedWeek.start_date + ' إلى ' + selectedWeek.end_date : '';
-// حساب تاريخ اليوم المختار داخل الأسبوع
-var startParts = selectedWeek.start_date.split('/');
-var startDate = new Date(
-    startParts[2],
-    startParts[1] - 1,
-    startParts[0]
-);
-
-var dayIndex = DAYS_AR.indexOf(dayName);
-
-var selectedDate = new Date(startDate);
-selectedDate.setDate(startDate.getDate() + dayIndex);
-selectedDate.setHours(0, 0, 0, 0);
-
-var orderDate = selectedDate.toLocaleDateString('ar-EG');    
+    
+    // ✅ حساب تاريخ اليوم المختار
+    var startParts = selectedWeek.start_date.split('/');
+    var startDate = new Date(startParts[2], startParts[1] - 1, startParts[0]);
+    var dayIndex = DAYS_AR.indexOf(dayName);
+    var selectedDate = new Date(startDate);
+    selectedDate.setDate(startDate.getDate() + dayIndex);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    var dd = String(selectedDate.getDate()).padStart(2, '0');
+    var mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    var yyyy = selectedDate.getFullYear();
+    var orderDate = dd + '/' + mm + '/' + yyyy;
+    
+    var weekRange = 'من ' + selectedWeek.start_date + ' إلى ' + selectedWeek.end_date;
+    
     try {
         await db.collection('orders').add({
             menu: menuName,
             day: dayName,
-            week: weekName,
-            week_number: selectedWeek ? selectedWeek.week_number : null,
+            week: selectedWeek.week_name,
+            week_number: selectedWeek.week_number,
             week_range: weekRange,
             order_date: orderDate,
             customer_name: name,
@@ -876,7 +725,7 @@ var orderDate = selectedDate.toLocaleDateString('ar-EG');
         console.error('❌ Error saving order:', error);
     }
     
-    var message = '\nاليوم: ' + dayName + ' (' + orderDate + ')\n' + weekName +   '\n\nالاسم: ' + name + '\n\nالفطور: ' + (selectedMeals.breakfast || '') + '\nالغداء: ' + (selectedMeals.lunch || '') + '\nالعشاء: ' + (selectedMeals.dinner || '') + '\nالسناك: ' + (selectedMeals.snack || '') + '\nالسلطة: ' + (selectedMeals.salad || '');
+    var message = 'طلب جديد - Cure Diet\n\nالمنيو: ' + menuName + '\nاليوم: ' + dayName + ' (' + orderDate + ')\n' + selectedWeek.week_name + '\nنطاق الأسبوع: ' + weekRange + '\n\nالاسم: ' + name + '\n\nالفطور: ' + (selectedMeals.breakfast || '') + '\nالغداء: ' + (selectedMeals.lunch || '') + '\nالعشاء: ' + (selectedMeals.dinner || '') + '\nالسناك: ' + (selectedMeals.snack || '') + '\nالسلطة: ' + (selectedMeals.salad || '');
     
     var url = 'https://wa.me/+' + PHONE_NUMBER + '?text=' + encodeURIComponent(message);
     window.open(url, '_blank');
@@ -887,7 +736,6 @@ var orderDate = selectedDate.toLocaleDateString('ar-EG');
     currentDayId = null;
     selectedMeals = {};
     selectedWeek = null;
-    selectedWeekDates = [];
     if (nameInput) nameInput.value = '';
     document.getElementById('submitOrder').disabled = true;
     renderMenus();

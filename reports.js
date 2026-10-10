@@ -1,5 +1,5 @@
 // ============================================
-// Cure Diet - Reports JavaScript (التاريخ تحت اليوم)
+// Cure Diet - Reports JavaScript (مع إحصائيات الوجبات)
 // ============================================
 
 // ===== Firebase Configuration =====
@@ -68,7 +68,6 @@ function getCurrentWeekSaturday() {
     const daysToSaturday = currentDay + 1;
     saturday.setDate(today.getDate() - daysToSaturday);
     saturday.setHours(0, 0, 0, 0);
-    
     return saturday;
 }
 
@@ -321,7 +320,7 @@ function setWeek(week) {
 }
 
 // ============================================================
-// ===== render Table (التاريخ تحت اسم اليوم) =====
+// ===== render Table =====
 // ============================================================
 
 function renderTable() {
@@ -419,6 +418,85 @@ function updateStats() {
     
     const completedOrders = allOrders.filter(o => o.status === 'مكتمل');
     document.getElementById('completedOrders').textContent = completedOrders.length;
+    
+    // ✅ إحصائيات الوجبات
+    updateMealsStats();
+}
+
+// ============================================================
+// ===== إحصائيات الوجبات =====
+// ============================================================
+
+function updateMealsStats() {
+    const container = document.getElementById('mealsStatsRow');
+    const countBadge = document.getElementById('totalMealsCount');
+    if (!container) return;
+    
+    // ✅ عدّ الوجبات من الطلبات المفلترة
+    const mealsCount = {};
+    let totalMeals = 0;
+    
+    const mealFields = [
+        { field: 'breakfast', label: 'الفطور', icon: '🍳' },
+        { field: 'lunch', label: 'الغداء', icon: '🍗' },
+        { field: 'dinner', label: 'العشاء', icon: '🌙' },
+        { field: 'snack', label: 'السناك', icon: '🍰' },
+        { field: 'salad', label: 'السلطة', icon: '🥗' }
+    ];
+    
+    filteredOrders.forEach(order => {
+        mealFields.forEach(mf => {
+            const value = order[mf.field];
+            if (value && value.trim() !== '' && value !== '-') {
+                const key = mf.field + '::' + value.trim();
+                if (!mealsCount[key]) {
+                    mealsCount[key] = {
+                        field: mf.field,
+                        mealType: mf.label,
+                        icon: mf.icon,
+                        name: value.trim(),
+                        count: 0
+                    };
+                }
+                mealsCount[key].count++;
+                totalMeals++;
+            }
+        });
+    });
+    
+    // ✅ ترتيب حسب العدد (الأكثر أولاً)
+    const mealsArray = Object.values(mealsCount).sort((a, b) => b.count - a.count);
+    
+    if (countBadge) countBadge.textContent = totalMeals + ' وجبة';
+    
+    if (mealsArray.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center py-4 text-muted">
+                📭 لا توجد وجبات لعرضها
+            </div>
+        `;
+        return;
+    }
+    
+    // ✅ عرض البطاقات
+    let html = '';
+    mealsArray.forEach(meal => {
+        html += `
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="meal-stat-card">
+                    <div class="meal-stat-header">
+                        <span class="meal-type-label">${meal.icon} ${meal.mealType}</span>
+                    </div>
+                    <div class="meal-stat-body">
+                        <div class="meal-stat-name">${meal.name}</div>
+                        <div class="meal-stat-count">${meal.count}</div>
+                        <div class="meal-stat-label">مرة</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
 }
 
 // ============================================================
@@ -648,3 +726,22 @@ window.updateStatus = updateStatus;
 window.refreshWeeks = refreshWeeks;
 
 console.log('✅ All reports functions defined!');
+
+// ============================================================
+// ===== فتح/قفل إحصائيات الوجبات =====
+// ============================================================
+
+function toggleMealsStats() {
+    const row = document.getElementById('mealsStatsRow');
+    const arrow = document.getElementById('mealsStatsArrow');
+    
+    if (!row || !arrow) return;
+    
+    if (row.style.display === 'none' || row.style.display === '') {
+        row.style.display = 'flex';
+        arrow.textContent = '▲';
+    } else {
+        row.style.display = 'none';
+        arrow.textContent = '▼';
+    }
+}

@@ -28,18 +28,29 @@
         .stat-card .label { font-size: 14px; color: #6c757d; }
         
         .table-container { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
-        .table th { background: #2c3e50; color: #fff; text-align: center; white-space: nowrap; }
-        .table td { text-align: center; vertical-align: middle; font-size: 14px; }
+        .table th { background: #2c3e50; color: #fff; text-align: center; white-space: nowrap; font-size: 13px; }
+        .table td { text-align: center; vertical-align: middle; font-size: 13px; }
         .table tbody tr:hover { background: #f8f9fa; }
         
-        .week-badge { padding: 4px 12px; border-radius: 50px; font-size: 12px; font-weight: 600; }
-        .week-badge.week1 { background: #d4edda; color: #155724; }
-        .week-badge.week2 { background: #cce5ff; color: #004085; }
+        .week-badge { padding: 4px 12px; border-radius: 50px; font-size: 12px; font-weight: 600; color: #fff; }
         
         .status-badge { padding: 4px 12px; border-radius: 50px; font-size: 12px; }
         .status-badge.new { background: #fff3cd; color: #856404; }
         .status-badge.completed { background: #d4edda; color: #155724; }
         .status-badge.cancelled { background: #f8d7da; color: #721c24; }
+        
+        /* ✅ تنسيق تاريخ اليوم المختار (تحت اسم اليوم) */
+        .day-date-under {
+            display: block;
+            background: #e54750;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 4px;
+            white-space: nowrap;
+        }
         
         .btn-export { background: #28a745; color: #fff; border: none; border-radius: 8px; padding: 8px 20px; }
         .btn-export:hover { background: #218838; color: #fff; }
@@ -51,7 +62,7 @@
         .btn-delete-all:hover { background: #5a6268; color: #fff; }
         
         .week-selector { display: flex; gap: 10px; flex-wrap: wrap; }
-        .week-selector .btn-week { border-radius: 50px; padding: 8px 25px; border: 2px solid #e9ecef; background: #fff; transition: all 0.3s; }
+        .week-selector .btn-week { border-radius: 50px; padding: 8px 25px; border: 2px solid #e9ecef; background: #fff; transition: all 0.3s; cursor: pointer; }
         .week-selector .btn-week.active { border-color: #e54750; background: #e54750; color: #fff; }
         .week-selector .btn-week:hover { border-color: #e54750; }
         
@@ -71,10 +82,63 @@
         .toast-custom.warning { border-right: 4px solid #ffc107; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         
+        /* ✅ بطاقات إحصائيات الوجبات */
+        .meal-stat-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            border-right: 4px solid #e54750;
+            transition: all 0.3s;
+            height: 100%;
+        }
+        .meal-stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+        }
+        .meal-stat-header {
+            margin-bottom: 8px;
+        }
+        .meal-type-label {
+            background: #f8f9fa;
+            color: #495057;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .meal-stat-body {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .meal-stat-name {
+            flex: 1;
+            font-weight: 600;
+            font-size: 13px;
+            color: #2c3e50;
+            word-break: break-word;
+        }
+        .meal-stat-count {
+            background: #e54750;
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 16px;
+            min-width: 45px;
+            text-align: center;
+        }
+        .meal-stat-label {
+            font-size: 11px;
+            color: #6c757d;
+        }
+        
         @media (max-width: 768px) {
             .stat-card .number { font-size: 20px; }
-            .table-responsive { font-size: 13px; }
-            .table th, .table td { padding: 8px; }
+            .table-responsive { font-size: 12px; }
+            .table th, .table td { padding: 6px; font-size: 11px; }
             .action-buttons { flex-direction: column; gap: 4px; }
         }
     </style>
@@ -113,7 +177,6 @@
                     <option value="">كل المنيوات</option>
                 </select>
             </div>
-            </div>
             <div class="col-md-2">
                 <label class="fw-bold small">📌 الحالة</label>
                 <select id="filterStatus" class="filter-input w-100" onchange="applyFilters()">
@@ -127,6 +190,18 @@
                 <label class="fw-bold small">⚡ إجراءات سريعة</label>
                 <div class="d-flex gap-2">
                     <button class="btn btn-primary w-100" onclick="loadReports()">🔄 تحديث</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ===== فلترة الأسابيع ===== -->
+        <div class="row mt-3">
+            <div class="col-12">
+                <label class="fw-bold small">📅 فلترة بالأسابيع</label>
+                <div class="week-selector" id="weekFilterButtons">
+                    <button class="btn-week active" data-week="all" onclick="setWeek('all')">
+                        📅 الكل
+                    </button>
                 </div>
             </div>
         </div>
@@ -185,6 +260,22 @@
         </div>
     </div>
 
+<!-- ===== إحصائيات الوجبات (قابل للفتح والقفل) ===== -->
+<div class="table-container mb-4" id="mealsStatsContainer">
+    <div class="d-flex justify-content-between align-items-center" 
+         onclick="toggleMealsStats()" 
+         style="cursor: pointer; user-select: none;">
+        <h5 class="mb-0">
+            <span id="mealsStatsArrow">▼</span>
+            🍽️ إحصائيات الوجبات المطلوبة
+        </h5>
+        <span class="badge bg-info" id="totalMealsCount">0 وجبة</span>
+    </div>
+    <div class="row g-3 mt-3" id="mealsStatsRow" style="display: none;">
+        <!-- هيتعبى تلقائياً من JS -->
+    </div>
+</div>
+
     <!-- ===== جدول الطلبات ===== -->
     <div class="table-container">
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -201,8 +292,8 @@
                         <th style="width:40px;">
                             <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
                         </th>
-                        <th>#</th>
-                        <th>📅 التاريخ</th>
+                        <th style="width:40px;">#</th>
+                        <th>🕐 وقت الطلب</th>
                         <th>📋 المنيو</th>
                         <th>📅 اليوم</th>
                         <th>👤 العميل</th>
